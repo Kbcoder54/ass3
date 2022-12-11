@@ -1,0 +1,125 @@
+char** strArr() {
+  char** arr = malloc(sizeof(char*)*10);
+  for (int i = 0; i < 10; i++) {
+    arr[i] = malloc(sizeof(char)*10);
+  }
+  return arr;
+}
+
+
+#define QUEUE_SIZE 128
+
+static char* message_queue[QUEUE_SIZE];
+static int queue_head = 0;
+static int queue_tail = 0;
+
+static int add_message(char* message)
+{
+  int next_tail = (queue_tail + 1) % QUEUE_SIZE;
+  if (next_tail == queue_head)
+    return -ENOMEM; // Queue is full
+
+  message_queue[queue_tail] = message;
+  queue_tail = next_tail;
+  return 0;
+}
+
+static char* remove_message(void)
+{
+  if (queue_tail == queue_head)
+    return NULL; // Queue is empty
+
+  char* message = message_queue[queue_head];
+  queue_head = (queue_head + 1) % QUEUE_SIZE;
+  return message;
+}
+
+static int my_device_open(struct inode* inode, struct file* file)
+{
+  // Do device-specific initialization here
+  return 0;
+}
+
+static int my_device_release(struct inode* inode, struct file* file)
+{
+  // Do device-specific cleanup here
+  return 0;
+}
+
+static ssize_t my_device_read(struct file* file, char __user* buf, size_t count, loff_t* pos)
+{
+  char* message = remove_message();
+
+  if (message == NULL)
+    return 0; // No message to read
+
+  // Copy the message to user-space
+  if (copy_to_user(buf, message, strlen(message)) != 0)
+    return -EFAULT;
+
+  return strlen(message);
+}
+
+static ssize_t my_device_write(struct file* file, const char __user* buf, size_t count, loff_t* pos)
+{
+||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
+#define QUEUE_SIZE 1000
+
+static char* message_queue[QUEUE_SIZE];
+static int queue_head = 0;
+static int queue_tail = 0;
+
+static int add_message(char* message)
+{
+  int next_tail = (queue_tail + 1) % QUEUE_SIZE;
+  if (next_tail == queue_head)
+    return -ENOMEM; // Queue is full
+
+  message_queue[queue_tail] = message;
+  queue_tail = next_tail;
+  return 0;
+}
+
+static int my_device_open(struct inode* inode, struct file* file)
+{
+  // Do device-specific initialization here
+  return 0;
+}
+
+static int my_device_release(struct inode* inode, struct file* file)
+{
+  // Do device-specific cleanup here
+  return 0;
+}
+
+static ssize_t my_device_write(struct file* file, const char __user* buf, size_t count, loff_t* pos)
+{
+  // Allocate memory for the message
+  char* message = kmalloc(count, GFP_KERNEL);
+  if (message == NULL)
+    return -ENOMEM;
+
+  // Copy the message from user-space
+  if (copy_from_user(message, buf, count) != 0) {
+    kfree(message);
+    return -EFAULT;
+  }
+
+  // Add the message to the queue
+  int ret = add_message(message);
+  if (ret < 0) {
+    kfree(message);
+    return ret;
+  }
+
+  return count;
+}
+
+static const struct file_operations my_device_fops = {
+  .owner = THIS_MODULE,
+  .open = my_device_open,
+  .release = my_device_release,
+  .write = my_device_write,
+};
+
+static int __init my_device_init
